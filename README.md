@@ -1,4 +1,4 @@
-# Unified AI Gateway 🧠
+# Unified AI Gateway
 
 A lightweight, zero-dependency Python router that pools free-tier API keys from multiple LLM providers into a single, uninterrupted conversational interface. 
 
@@ -22,7 +22,7 @@ When a provider reaches its rate limit (429 error), the gateway silently catches
 
 1. **Clone the repository:**
 ```bash
-git clone [https://github.com/your-username/Custom-AI-Router.git](https://github.com/your-username/Custom-AI-Router.git)
+git clone https://github.com/ParakramaWelipitiya/Unified-AI-Gateway.git
 cd Custom-AI-Router
 ```
 
