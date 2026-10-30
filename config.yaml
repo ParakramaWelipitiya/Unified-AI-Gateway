@@ -1,0 +1,19 @@
+model_list:
+  - model_name: my-unified-ai
+    litellm_params:
+      model: gemini/gemini-1.5-pro
+      api_key: "os.environ/GEMINI_API_KEY"
+  
+  - model_name: my-unified-ai
+    litellm_params:
+      model: deepseek/deepseek-chat
+      api_key: "os.environ/DEEPSEEK_API_KEY"
+      
+  - model_name: my-unified-ai
+    litellm_params:
+      model: groq/llama3-70b-8192
+      api_key: "os.environ/GROQ_API_KEY"
+
+router_settings:
+  routing_strategy: "usage-based-routing"
+  fallback_next_model: true
