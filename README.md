@@ -1,23 +1,58 @@
 # Unified AI Gateway
 
-A lightweight, zero-dependency Python router that pools free-tier API keys from multiple LLM providers (Google AI Studio Gemini, Groq, DeepSeek) into a single, uninterrupted conversational interface.
+A high-performance Python gateway and terminal interface that pools free-tier API keys from multiple LLM providers (**Google AI Studio Gemini**, **OpenRouter**, **Groq**, **DeepSeek**) with an **Antigravity CLI-style UI**, **Multi-Key Pooling per Model**, and a **Strict Priority Context Engine** (`rules.md` ➜ `notes.md` ➜ `knowledge_base.md`).
 
-When a model or provider reaches its rate limit (429), times out, or encounters a server error, the gateway silently catches the exception and instantly routes your prompt to the next available model in the fallback chain.
+---
 
-## Features
-* **Native Google AI Studio Integration:** Calls Google's Gemini API directly using the native `generateContent` format instead of legacy OpenAI wrappers.
-* **Intra-Gemini Model Auto-Switching:** If a Gemini model hits a rate limit (429) or is busy/deprecated, the router automatically fails over to the next Gemini model (e.g. `gemini-2.5-flash` -> `gemini-2.5-pro` -> `gemini-2.0-flash`, etc.).
-* **Dynamic Model Updates from Google:** Fetches the latest available Gemini models dynamically directly from Google AI Studio (`GET /v1beta/models`).
-* **Cross-Provider Automatic Failover:** If all Gemini models are exhausted or rate-limited, smoothly cascades to Groq and DeepSeek.
-* **Context Memory:** Maintains complete conversation history and system instructions across models and providers during failover.
-* **Lightweight & Decoupled:** Built with Python 3.10+ using just `requests` and `python-dotenv`. Core logic in `router.py` is fully decoupled from the UI for easy integration into FastAPI or GUI desktop apps.
+## Supported Free-Tier Providers
 
-## Prerequisites
-* Python 3.10+ (Tested on Python 3.13 / 3.14)
-* Free API keys from at least one supported provider:
-  * [Google AI Studio (Gemini)](https://aistudio.google.com/)
-  * [Groq Console](https://console.groq.com/)
-  * [DeepSeek Platform](https://platform.deepseek.com/)
+| Provider | Best Free Models | Daily Quota / Rate Limits | Free Tier Features |
+| :--- | :--- | :--- | :--- |
+| **Google AI Studio** | `gemini-3.5-flash`, `gemini-3.1-flash-lite`, `gemini-pro-latest` | 15 RPM / 1,500 RPD | Native Google API, fastest response times, 1M context window |
+| **OpenRouter** | `meta-llama/llama-3.3-70b-instruct:free`, `deepseek/deepseek-r1:free`, `qwen/qwen-2.5-coder-32b-instruct:free` | 20 RPM / 200 RPD | Massive catalog of free `:free` models across providers |
+| **Groq** | `llama-3.3-70b-versatile`, `llama-3.1-8b-instant` | 30 RPM / 14,400 RPD | World's fastest LPU inference (500+ tokens/sec) |
+| **DeepSeek Platform** | `deepseek-chat` | Initial trial credits | Strong reasoning & coding capabilities |
+
+---
+
+## Key Features
+
+### 1. Interactive Setup & Multi-Key Pooling (`/setup`)
+- **Interactive In-Terminal Setup:** Configure your API keys directly inside the terminal without manually editing `.env`.
+- **Multi-Key Pooling per Provider:** Add multiple free-tier keys for the same provider (e.g. 2–3 Google Gemini keys or OpenRouter keys).
+- **Automatic Key Rotation on Rate Limits (429/403):** If Key #1 hits a usage cap or rate limit, the router silently rotates to Key #2 for the same model.
+- **Failover Logic:**
+  - In **Auto-Router** mode: cascades through all keys for Gemini ➜ OpenRouter ➜ Groq ➜ DeepSeek.
+  - In **Selected Model** mode: tests all configured keys for that model; if all keys are exhausted, displays a clear message rather than silently switching models.
+
+### 2. Live Context Update (`/update`)
+- The `/update` command automatically re-indexes your codebase directly from the **current working directory** (`os.getcwd()`), refreshing `knowledge.json` and generating an up-to-date, human-readable `knowledge_base.md`.
+
+### 3. Substantive Semantic Chunking
+- Code-aware boundary detection splits code on `class`, `def`, and `async def` while ignoring comment dividers (`# ---`), ensuring every retrieved chunk contains real, functional code.
+
+### 4. Strict Priority Context Flow
+1. **Priority 1: `rules.md` (Golden Rules & Hard Constraints)**
+   - Highest priority. Non-negotiable project policies.
+   - Command: `/addrule <rule>` and `/rules`.
+2. **Priority 2: `notes.md` (Developer Memory & Architectural Notes)**
+   - Medium priority. Explicit developer facts, decisions, and documentation notes.
+   - Command: `/addnote <title> | <content>` and `/notes`.
+3. **Priority 3: `knowledge_base.md` (Codebase & Documents)**
+   - Supporting context. Codebase files, functions, and documentation chunks.
+   - Command: `/add <path>` or `/update`.
+
+### 5. Antigravity CLI-Style Terminal UI
+- Multi-line bracketed input prompt with live status badges:
+  ```text
+  ╭─[ ◆ Test ]─[ ⟡ gemini-3.5-flash ]─[ ⚡ RAG:ON ]
+  ╰─❯ 
+  ```
+- Tab autocompletion for slash commands, files, and project names.
+- Native Markdown formatting for headers, syntax-highlighted code blocks, bold, lists, and tables.
+- Protected query cache (prevents caching empty or error responses).
+
+---
 
 ## Installation & Setup
 
@@ -27,35 +62,44 @@ git clone https://github.com/ParakramaWelipitiya/Unified-AI-Gateway.git
 cd Unified-AI-Gateway
 ```
 
-2. **Create and activate a virtual environment:**
-```bash
-python -m venv venv
-# On Windows:
+2. **Activate your virtual environment:**
+```powershell
 .\venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
 ```
 
-3. **Install the required libraries:**
+3. **Install dependencies:**
 ```bash
-pip install requests python-dotenv
+pip install requests python-dotenv prompt_toolkit
 ```
 
-4. **Configure your API keys:**
-Create a `.env` file in the root directory:
-```env
-GEMINI_API_KEY="your_gemini_api_key_here"
-GROQ_API_KEY="your_groq_api_key_here"
-DEEPSEEK_API_KEY="your_deepseek_api_key_here"
-```
-
-5. **Start the interactive terminal session:**
+4. **Launch the terminal & run `/setup`:**
 ```bash
 python main.py
 ```
+Type `/setup` inside the terminal to add and pool your API keys.
 
-### Commands in Terminal
-- `/switch`  - Select a specific Gemini model, another provider, or return to Auto-Router
-- `/refresh` - Fetch and update the latest model list dynamically from Google AI Studio
-- `/models`  - View all currently active Gemini models from Google AI Studio
-- `exit` / `quit` - Exit the terminal
+---
+
+## Commands Guide
+
+### API Keys & Configuration
+- `/setup`          - Interactive wizard to add, pool, or view API keys (supports multiple keys per provider)
+- `/update [path]`   - Re-index and sync context from path (or current working directory if omitted)
+
+### Priority Context & Memory
+- `/addrule <rule>` - Add a golden rule to `rules.md` (Priority 1)
+- `/rules`          - View active project rules
+- `/addnote <t>|<c>`- Add a developer memory note to `notes.md` (Priority 2)
+- `/notes`          - View all saved notes
+- `/add <path>`     - Index a single file or entire folder into `knowledge_base.md` (Priority 3)
+- `/search <query>` - Hybrid test-search RAG retrieval without calling LLM (0 tokens)
+- `/context`        - View storage path, chunk count, and index stats
+- `/clear-rag [id]`   - Delete the project's RAG storage folder and all associated data
+
+### Routing & Models
+- `/project <name>` - Switch active project namespace
+- `/switch`         - Switch model or select Auto-Router
+- `/refresh`        - Fetch live model list from Google AI Studio
+- `/models`         - Display all available Gemini models
+- `/rag [on|off]`   - Toggle RAG retrieval
+- `exit` or `quit`  - Exit terminal
